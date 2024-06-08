@@ -2,6 +2,7 @@
 import logging
 from flask import Flask, request
 from flask_restx import Api, Resource, fields
+from flask_cors import CORS
 import networkx as nx
 from dotenv import load_dotenv
 load_dotenv()
@@ -10,6 +11,7 @@ load_dotenv()
 # from networkx.readwrite import json_graph
 
 app = Flask(__name__)
+CORS(app)
 
 api = Api(app, version='1.0', title='API de Réseau de Télécommunications',
           description='Une API simple pour gérer un réseau de télécommunications')
