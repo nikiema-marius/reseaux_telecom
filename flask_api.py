@@ -100,5 +100,5 @@ if __name__ != '__main__':
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 
-if __name__ == '__main__':
+elif __name__ == '__main__':
     app.run(debug=True)
