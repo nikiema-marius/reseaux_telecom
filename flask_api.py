@@ -8,9 +8,6 @@ from matplotlib import pyplot as plt
 import base64
 from dotenv import load_dotenv
 load_dotenv()
-# from waitress import serve
-# from flasgger import swag_from
-# from networkx.readwrite import json_graph
 
 app = Flask(__name__)
 CORS(app)
@@ -56,18 +53,16 @@ class GraphResource(Resource):
         for edge in data['edges']:
             G.add_edge(edge['node1'], edge['node2'], weight=edge['weight'])
         
-        plt.figure(figsize=(8, 6))
-        nx.draw(G, with_labels=True, node_color='lightblue', edge_color='gray')
-
-        # Enregistrer le graphique dans un objet BytesIO
+        pos = nx.spring_layout(G)
+        nx.draw_networkx_nodes(G, pos)
+        labels = nx.get_edge_attributes(G, 'weight')
+        nx.draw_networkx_edges(G, pos)
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+        nx.draw_networkx_labels(G, pos)
         img = io.BytesIO()
         plt.savefig(img, format='png', bbox_inches='tight')
         img.seek(0)
-
-        # Encoder l'image en base64
         plot_url = base64.b64encode(img.getvalue()).decode()
-
-        # Fermer la figure pour libérer la mémoire
         plt.close()
         data['plot_url'] = plot_url
         return data
@@ -85,7 +80,6 @@ class MSTResource(Resource):
         for edge in data['edges']:
             G.add_edge(edge['node1'], edge['node2'], weight=edge['weight'])
         MST = nx.minimum_spanning_tree(G, algorithm='kruskal')
-        plt.figure(figsize=(8, 6))
         pos = nx.spring_layout(MST)
         nx.draw_networkx(MST, pos)
         edge_labels = nx.get_edge_attributes(G, 'weight')
@@ -103,10 +97,8 @@ class MSTResource(Resource):
         return mst_data
 
 @ns.route('/shortest-path/')
-# @api.doc(params={'start': 'Le nœud de départ', 'end': 'Le nœud de fin'})
 class ShortestPathResource(Resource):
     @ns.expect(shortest_path_model)
-    # @ns.marshal_with(shortest_path_model)
     def post(self):
         """
         Calcule le chemin le plus court entre deux nœuds
@@ -121,7 +113,6 @@ class ShortestPathResource(Resource):
         shortest_path = nx.dijkstra_path(G, source=data['start'], target=data['end'])
         shortest_path_length = nx.dijkstra_path_length(G, source=data['start'], target=data['end'])
         path_edges = list(zip(shortest_path, shortest_path[1:]))
-        plt.figure(figsize=(8, 6))
         pos = nx.spring_layout(G)
         nx.draw_networkx(G, pos)
         nx.draw_networkx_nodes(G, pos, nodelist=shortest_path, node_color='red')
