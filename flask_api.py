@@ -1,9 +1,11 @@
-# import os
+import io
 import logging
 from flask import Flask, request
 from flask_restx import Api, Resource, fields
 from flask_cors import CORS
 import networkx as nx
+from matplotlib import pyplot as plt
+import base64
 from dotenv import load_dotenv
 load_dotenv()
 # from waitress import serve
@@ -31,7 +33,8 @@ edge_model = api.model('Edge', {
 
 graph_model = api.model('Graph', {
     'nodes': fields.List(fields.Nested(node_model), description='La liste des nœuds'),
-    'edges': fields.List(fields.Nested(edge_model), description='La liste des arêtes')
+    'edges': fields.List(fields.Nested(edge_model), description='La liste des arêtes'),
+    'plot_url': fields.String(required=True, description='Le lien du graphe')
 })
 
 shortest_path_model = api.model('ShortestPath', {
@@ -53,6 +56,20 @@ class GraphResource(Resource):
         for edge in data['edges']:
             G.add_edge(edge['node1'], edge['node2'], weight=edge['weight'])
         
+        plt.figure(figsize=(8, 6))
+        nx.draw(G, with_labels=True, node_color='lightblue', edge_color='gray')
+
+        # Enregistrer le graphique dans un objet BytesIO
+        img = io.BytesIO()
+        plt.savefig(img, format='png', bbox_inches='tight')
+        img.seek(0)
+
+        # Encoder l'image en base64
+        plot_url = base64.b64encode(img.getvalue()).decode()
+
+        # Fermer la figure pour libérer la mémoire
+        plt.close()
+        data['plot_url'] = plot_url
         return data
 
 @ns.route('/mst')
@@ -68,9 +85,20 @@ class MSTResource(Resource):
         for edge in data['edges']:
             G.add_edge(edge['node1'], edge['node2'], weight=edge['weight'])
         MST = nx.minimum_spanning_tree(G, algorithm='kruskal')
+        plt.figure(figsize=(8, 6))
+        pos = nx.spring_layout(MST)
+        nx.draw_networkx(MST, pos)
+        edge_labels = nx.get_edge_attributes(G, 'weight')
+        nx.draw_networkx_edge_labels(MST, pos, edge_labels=edge_labels)
+        img = io.BytesIO()
+        plt.savefig(img, format='png', bbox_inches='tight')
+        img.seek(0)
+        plt.close()
+        plot_url = base64.b64encode(img.getvalue()).decode()
         mst_data = {
             'nodes': [{'id': n} for n in MST.nodes],
-            'edges': [{'node1': u, 'node2': v, 'weight': d['weight']} for u, v, d in MST.edges(data=True)]
+            'edges': [{'node1': u, 'node2': v, 'weight': d['weight']} for u, v, d in MST.edges(data=True)],
+            'plot_url': plot_url
         }
         return mst_data
 
@@ -92,9 +120,21 @@ class ShortestPathResource(Resource):
 
         shortest_path = nx.dijkstra_path(G, source=data['start'], target=data['end'])
         shortest_path_length = nx.dijkstra_path_length(G, source=data['start'], target=data['end'])
+        path_edges = list(zip(shortest_path, shortest_path[1:]))
+        plt.figure(figsize=(8, 6))
+        pos = nx.spring_layout(G)
+        nx.draw_networkx(G, pos)
+        nx.draw_networkx_nodes(G, pos, nodelist=shortest_path, node_color='red')
+        nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='red', width=2)
+        img = io.BytesIO()
+        plt.savefig(img, format='png', bbox_inches='tight')
+        img.seek(0)
+        plt.close()
+        plot_url = base64.b64encode(img.getvalue()).decode()
         return {
             'path': shortest_path,
-            'length': shortest_path_length
+            'length': shortest_path_length,
+            'plot_url': plot_url
         }
 
 if __name__ != '__main__':
