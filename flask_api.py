@@ -104,9 +104,7 @@ class MSTResource(Resource):
 class ShortestPathResource(Resource):
     @ns.expect(shortest_path_model)
     def post(self):
-        """
-        Calcule le chemin le plus court entre deux nœuds
-        """
+        """Calcule le chemin le plus court entre deux nœuds"""
         data = request.json
         G = nx.Graph()
         for node in data['graph']['nodes']:
@@ -117,14 +115,9 @@ class ShortestPathResource(Resource):
         shortest_path = nx.dijkstra_path(G, source=data['start'], target=data['end'])
         shortest_path_length = nx.dijkstra_path_length(G, source=data['start'], target=data['end'])
         path_edges = list(zip(shortest_path, shortest_path[1:]))
-        # pos = nx.spring_layout(G)
         pos_dict = data['graph']['pos']
         pos = {k: np.array(v) for k, v in pos_dict.items()}
-        nx.draw_networkx_nodes(G, pos)
-        labels = nx.get_edge_attributes(G, 'weight')
-        nx.draw_networkx_edges(G, pos)
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
-        nx.draw_networkx_labels(G, pos)
+        nx.draw_networkx(G, pos)
         nx.draw_networkx_nodes(G, pos, nodelist=shortest_path, node_color='red')
         nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='red', width=2)
         img = io.BytesIO()
